@@ -22,11 +22,14 @@ const FLOWER_MAP: Record<string, string> = {
 
 export default function FlowerMode() {
     const [grouped, setGrouped] = useState<Record<string, any[]>>({})
+    const [mounted, setMounted] = useState(false)
 
     const getFlower = (color: string) =>
         FLOWER_MAP[color?.toLowerCase()] || '💐'
 
     useEffect(() => {
+        setMounted(true)
+
         const fetchWishes = async () => {
             const { data } = await supabase
                 .from('wishes')
@@ -46,6 +49,8 @@ export default function FlowerMode() {
 
         fetchWishes()
     }, [])
+
+    if (!mounted) return null
 
     return (
         <div className="fixed inset-0 bg-gradient-to-br from-rose-100 via-pink-200 to-fuchsia-300 flex items-center justify-center overflow-hidden">

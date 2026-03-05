@@ -51,12 +51,21 @@ export default function WallMode() {
                 (payload) => {
                     const wishId = payload.new.id
 
+                    const raw = payload.new as {
+                        id: string
+                        name: string
+                        message: string
+                        style_id: string
+                    }
+
                     const newWish: Wish = {
-                        ...payload.new,
+                        id: raw.id,
+                        name: raw.name,
+                        message: raw.message,
+                        style_id: raw.style_id,
                         startX: Math.random() * 70 + 15,
                         isExpired: false,
                     }
-
                     setWishes(prev => [...prev.slice(-20), newWish])
 
                     const timeout = setTimeout(() => {
