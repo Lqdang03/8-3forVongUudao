@@ -49,14 +49,14 @@ export default function WallMode() {
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'wishes' },
                 (payload) => {
-                    const wishId = payload.new.id
-
                     const raw = payload.new as {
                         id: string
                         name: string
                         message: string
                         style_id: string
                     }
+
+                    const wishId = raw.id
 
                     const newWish: Wish = {
                         id: raw.id,
