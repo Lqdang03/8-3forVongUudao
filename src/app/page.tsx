@@ -1,8 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { motion } from 'framer-motion'
-import { Send } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Send, UserCheck, ShieldQuestion } from 'lucide-react'
 
 const THEMES = [
   { id: '#ec4899', name: 'Hồng Kẹo' },
@@ -17,6 +17,9 @@ export default function WriteMode() {
   const [message, setMessage] = useState('')
   const [styleId, setStyleId] = useState(THEMES[0].id)
   const [loading, setLoading] = useState(false)
+  
+  // State quản lý màn hình khóa
+  const [isVerified, setIsVerified] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,12 +40,55 @@ export default function WriteMode() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex flex-col md:flex-row items-center justify-center gap-12 p-6">
+    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex flex-col md:flex-row items-center justify-center gap-12 p-6 overflow-hidden">
+      
+      {/* MÀN HÌNH KHÓA XÁC NHẬN */}
+      <AnimatePresence>
+        {!isVerified && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, y: -1000 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-2xl bg-slate-950/80 p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="max-w-sm w-full bg-white/10 border border-white/20 p-8 rounded-[2.5rem] shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 bg-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <ShieldQuestion size={40} className="text-indigo-400" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-white mb-2">Xác thực người dùng</h2>
+              <p className="text-white/60 mb-8">Nội dung này dành cho phái mạnh gửi gắm yêu thương. Bạn xác nhận mình là Nam chứ?</p>
+              
+              <div className="space-y-3">
+                <button 
+                  onClick={() => setIsVerified(true)}
+                  className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                >
+                  <UserCheck size={20} /> Đúng, là tôi
+                </button>
+                
+                <button 
+                  onClick={() => alert("Chế độ này chỉ dành cho người gửi lời chúc!")}
+                  className="w-full py-3 bg-white/5 hover:bg-white/10 text-white/40 rounded-2xl text-sm transition-all"
+                >
+                  Không, tôi là nữ
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      {/* NỘI DUNG CHÍNH (Sẽ hiện sau khi verified) */}
       {/* FORM */}
       <motion.div 
         initial={{ opacity: 0, x: -50 }}
-        animate={{ opacity: 1, x: 0 }}
+        whileInView={{ opacity: 1, x: 0 }}
         className="w-full max-w-md backdrop-blur-xl bg-white/10 border border-white/20 p-8 rounded-3xl shadow-2xl"
       >
         <h1 className="text-3xl font-bold text-white mb-6">
@@ -119,7 +165,7 @@ export default function WriteMode() {
       {/* PREVIEW */}
       <motion.div
         initial={{ opacity: 0, x: 50 }}
-        animate={{ opacity: 1, x: 0 }}
+        whileInView={{ opacity: 1, x: 0 }}
         className="flex flex-col items-center"
       >
         <p className="text-white/60 text-sm uppercase tracking-widest mb-4">
