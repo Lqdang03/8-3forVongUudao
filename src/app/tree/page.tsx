@@ -20,7 +20,12 @@ const FLOWER_MAP: Record<string, string> = {
     '#10b981': '🌷',
 }
 
-const SONGS = ['/audio/moonlight.mp3', '/audio/rock.mp3'];
+const SONGS = ['/audio/moonlight.mp3',
+    '/audio/rock.mp3',
+    '/audio/her.mp3',
+    '/audio/Camon.mp3',
+    '/audio/vudieucongchieng.mp3',
+    '/audio/nguoidautien.mp3'];
 
 export default function FlowerMode() {
     const [grouped, setGrouped] = useState<Record<string, any[]>>({})
@@ -47,7 +52,7 @@ export default function FlowerMode() {
         const audio = new Audio(SONGS[Math.floor(Math.random() * SONGS.length)])
         audio.volume = 0.6
         audioRef.current = audio
-        audio.play().catch(() => {})
+        audio.play().catch(() => { })
     }
 
     useEffect(() => {
@@ -68,7 +73,7 @@ export default function FlowerMode() {
 
     return (
         <div className="fixed inset-0 bg-gradient-to-br from-rose-100 via-pink-100 to-teal-50 flex items-center justify-center overflow-hidden">
-            
+
             <Link href="/wall" className="absolute top-6 left-6 z-50 text-pink-600 bg-white/80 border border-pink-200 px-5 py-2 rounded-full shadow-lg hover:bg-white transition-all flex items-center gap-2">
                 <span>←</span> Wall
             </Link>
@@ -78,13 +83,13 @@ export default function FlowerMode() {
                 {THEMES.map((theme, idx) => {
                     const gridPos = ["col-start-1 row-start-1", "col-start-3 row-start-1", "col-start-2 row-start-2", "col-start-1 row-start-3", "col-start-3 row-start-3"][idx];
                     return (
-                        <FlowerZone 
+                        <FlowerZone
                             key={`pc-${theme.id}`}
-                            flowers={grouped[theme.id]} 
-                            color={theme.id} 
-                            getFlower={getFlower} 
-                            onSelect={handleFlowerClick} 
-                            className={gridPos} 
+                            flowers={grouped[theme.id]}
+                            color={theme.id}
+                            getFlower={getFlower}
+                            onSelect={handleFlowerClick}
+                            className={gridPos}
                         />
                     )
                 })}
@@ -98,12 +103,12 @@ export default function FlowerMode() {
                 {THEMES.map((theme) => (
                     <div key={`mb-${theme.id}`}>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4 text-center">{theme.name}</p>
-                        <FlowerZone 
-                            flowers={grouped[theme.id]} 
-                            color={theme.id} 
-                            getFlower={getFlower} 
-                            onSelect={handleFlowerClick} 
-                            className="flex flex-wrap justify-center" 
+                        <FlowerZone
+                            flowers={grouped[theme.id]}
+                            color={theme.id}
+                            getFlower={getFlower}
+                            onSelect={handleFlowerClick}
+                            className="flex flex-wrap justify-center"
                         />
                     </div>
                 ))}
@@ -112,12 +117,12 @@ export default function FlowerMode() {
             {/* MODAL LỜI CHÚC (Chung cho cả 2) */}
             <AnimatePresence>
                 {selectedFlower && (
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         onClick={handleCloseCard}
                         className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-6"
                     >
-                        <motion.div 
+                        <motion.div
                             initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.5, opacity: 0 }}
                             onClick={(e) => e.stopPropagation()}
                             className="bg-white rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl text-center relative border-b-[12px]"
