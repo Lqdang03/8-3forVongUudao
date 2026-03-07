@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import Link from 'next/link'
-import { Volume2, VolumeX, Music, ChevronUp } from 'lucide-react'
+import { Volume2, VolumeX, Music, ChevronUp, Sparkles, Send } from 'lucide-react'
 
 const DECORATIONS = ['🌸', '🌷', '💖', '✨']
 
@@ -14,11 +14,14 @@ const PLAYLIST = [
     { name: 'Romantic Garden', url: '/audio/rock.mp3' },
 ]
 
+// Cập nhật type Wish để thêm gift_icon
 type Wish = {
     id: string
     name: string
     message: string
     style_id: string
+    recipient_name: string | null 
+    gift_icon: string | null // <-- THÊM DÒNG NÀY
     startX: number
     isExpired: boolean
 }
@@ -34,20 +37,14 @@ export default function WallMode() {
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const timeouts = useRef<Record<string, NodeJS.Timeout>>({})
 
-    // --- LOGIC PARALLAX (Chuột di chuyển) ---
+    // --- LOGIC PARALLAX ---
     const mouseX = useMotionValue(0)
     const mouseY = useMotionValue(0)
+    const smoothX = useSpring(mouseX, { damping: 50, stiffness: 300 })
+    const smoothY = useSpring(mouseY, { damping: 50, stiffness: 300 })
 
-    // Tạo độ nhún lò xo để chuyển động chuột mượt mà, không bị giật
-    const springConfig = { damping: 50, stiffness: 300 }
-    const smoothX = useSpring(mouseX, springConfig)
-    const smoothY = useSpring(mouseY, springConfig)
-
-    // Lớp nền di chuyển ít (-20px đến 20px)
     const bgMoveX = useTransform(smoothX, [0, 2000], [20, -20])
     const bgMoveY = useTransform(smoothY, [0, 1000], [20, -20])
-    
-    // Lớp hoa/thẻ di chuyển nhiều hơn (-45px đến 45px) để tạo chiều sâu
     const midMoveX = useTransform(smoothX, [0, 2000], [45, -45])
     const midMoveY = useTransform(smoothY, [0, 1000], [45, -45])
 
@@ -65,9 +62,7 @@ export default function WallMode() {
         audio.volume = 0.4
         audioRef.current = audio
 
-        const playAudio = () => {
-            audio.play().catch(() => {})
-        }
+        const playAudio = () => { audio.play().catch(() => {}) }
         window.addEventListener('click', playAudio, { once: true })
 
         return () => {
@@ -111,7 +106,12 @@ export default function WallMode() {
             .channel('realtime-wishes')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'wishes' }, (payload) => {
                 const raw = payload.new as any
-                const newWish: Wish = { ...raw, startX: Math.random() * 70 + 15, isExpired: false }
+                const newWish: Wish = { 
+                    ...raw, 
+                    gift_icon: raw.gift_icon, // <-- LẤY GIÁ TRỊ ICON TỪ DATABASE
+                    startX: Math.random() * 70 + 15, 
+                    isExpired: false 
+                }
                 setWishes(prev => [...prev.slice(-20), newWish])
                 const timeout = setTimeout(() => {
                     setWishes(prev => prev.map(w => w.id === raw.id ? { ...w, isExpired: true } : w))
@@ -136,30 +136,21 @@ export default function WallMode() {
     return (
         <div 
             onMouseMove={handleMouseMove}
-            className="h-screen w-full overflow-hidden relative bg-gradient-to-br from-rose-200 via-pink-300 to-fuchsia-400"
-            style={{ perspective: '1200px' }} // Quan trọng để hiệu ứng 3D đẹp hơn
+            className="h-screen w-full overflow-hidden relative bg-gradient-to-br from-rose-200 via-pink-300 to-fuchsia-400 font-sans"
+            style={{ perspective: '1200px' }} 
         >
-            {/* Lớp 1: Glow nền Parallax */}
-            <motion.div 
-                style={{ x: bgMoveX, y: bgMoveY }}
-                className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.4),_transparent_60%)] pointer-events-none"
-            />
+            <motion.div style={{ x: bgMoveX, y: bgMoveY }} className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.4),_transparent_60%)] pointer-events-none" />
 
             {/* Music Controls */}
             <div className="fixed bottom-6 right-6 z-[110] flex flex-col items-end gap-2">
                 <AnimatePresence>
                     {showPlaylist && (
-                        <motion.div 
-                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                        <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
                             className="bg-white/90 backdrop-blur-md p-2 rounded-2xl shadow-xl mb-2 min-w-[160px] border border-pink-100"
                         >
                             {PLAYLIST.map((song, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => changeSong(index)}
-                                    className={`w-full text-left px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
-                                        currentSongIndex === index ? 'bg-pink-500 text-white' : 'text-pink-600 hover:bg-pink-50'
-                                    }`}
+                                <button key={index} onClick={() => changeSong(index)}
+                                    className={`w-full text-left px-4 py-2 rounded-xl text-xs font-bold transition-colors ${currentSongIndex === index ? 'bg-pink-500 text-white' : 'text-pink-600 hover:bg-pink-50'}`}
                                 >
                                     {currentSongIndex === index && "• "} {song.name}
                                 </button>
@@ -170,8 +161,7 @@ export default function WallMode() {
 
                 <div className="flex gap-2">
                     <button onClick={() => setShowPlaylist(!showPlaylist)} className="bg-white/80 p-3 rounded-full shadow-lg text-pink-600 hover:scale-110 transition-transform flex items-center gap-2">
-                        <Music size={20} />
-                        <ChevronUp size={16} className={showPlaylist ? 'rotate-180' : ''} />
+                        <Music size={20} /> <ChevronUp size={16} className={showPlaylist ? 'rotate-180' : ''} />
                     </button>
                     <button onClick={toggleMute} className="bg-white/80 p-3 rounded-full shadow-lg text-pink-600 hover:scale-110 transition-transform">
                         {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -182,63 +172,83 @@ export default function WallMode() {
             {/* Lớp 2: Hoa rơi Parallax */}
             <AnimatePresence>
                 {decoItems.map((item) => (
-                    <motion.span
-                        key={item.id}
-                        style={{ x: midMoveX, y: midMoveY }} // Chuyển động theo chuột
-                        initial={{ y: -50, opacity: 0 }}
-                        animate={{ y: '110vh', opacity: [0, 0.4, 0], rotate: 360 }}
-                        transition={{ duration: item.duration, ease: 'linear' }}
-                        className="absolute pointer-events-none z-10"
-                    >
+                    <motion.span key={item.id} style={{ x: midMoveX, y: midMoveY }} initial={{ y: -50, opacity: 0 }} animate={{ y: '110vh', opacity: [0, 0.4, 0], rotate: 360 }} transition={{ duration: item.duration, ease: 'linear' }} className="absolute pointer-events-none z-10">
                         <span style={{ marginLeft: item.left, fontSize: item.size }}>{item.char}</span>
                     </motion.span>
                 ))}
             </AnimatePresence>
 
             {/* Lớp 3: Wishes Parallax */}
-            <motion.div 
-                style={{ x: useTransform(smoothX, [0, 2000], [10, -10]), y: useTransform(smoothY, [0, 1000], [10, -10]) }}
-                className="relative w-full h-full z-20"
-            >
+            <motion.div style={{ x: useTransform(smoothX, [0, 2000], [10, -10]), y: useTransform(smoothY, [0, 1000], [10, -10]) }} className="relative w-full h-full z-20">
                 <AnimatePresence>
                     {wishes.map((wish, index) => {
                         const isLatest = index === wishes.length - 1 && !wish.isExpired
+                        const isSpecificWish = wish.recipient_name != null && wish.recipient_name.trim() !== ''
+
                         return (
                             <motion.div
-                                key={wish.id}
-                                custom={wish}
-                                variants={variants}
-                                initial="initial"
-                                animate={wish.isExpired ? 'expired' : 'active'}
-                                transition={{
-                                    y: { duration: 18, ease: 'linear' },
-                                    scale: { type: 'spring', stiffness: 60, damping: 18 },
-                                    opacity: { duration: 1 },
-                                }}
-                                style={{
-                                    backgroundColor: `${wish.style_id}${wish.isExpired ? '66' : 'ee'}`,
-                                    zIndex: wish.isExpired ? 1 : index + 100,
-                                    position: 'absolute',
-                                }}
-                                className="p-8 rounded-[3.5rem] shadow-[0_0_40px_rgba(255,255,255,0.5)] text-white min-w-[300px] max-w-[420px] backdrop-blur-md flex flex-col items-center text-center border border-white/30"
+                                key={wish.id} custom={wish} variants={variants} initial="initial" animate={wish.isExpired ? 'expired' : 'active'}
+                                transition={{ y: { duration: 18, ease: 'linear' }, scale: { type: 'spring', stiffness: 60, damping: 18 }, opacity: { duration: 1 } }}
+                                style={{ backgroundColor: `${wish.style_id}${wish.isExpired ? '66' : 'ee'}`, zIndex: wish.isExpired ? 1 : index + 100, position: 'absolute' }}
+                                className={`px-8 pt-8 pb-10 rounded-[3rem] shadow-[0_0_50px_rgba(0,0,0,0.1)] text-white min-w-[340px] max-w-[480px] backdrop-blur-xl flex flex-col border border-white/40 ${
+                                    isSpecificWish && !wish.isExpired ? 'ring-[6px] ring-white/50 shadow-[0_0_100px_rgba(255,255,255,0.6)] scale-105' : ''
+                                }`}
                             >
                                 {isLatest && (
-                                    <div className="absolute -top-6 bg-white text-pink-600 text-[11px] font-bold px-4 py-1 rounded-full shadow-md animate-bounce">
-                                        🌸 VỪA GỬI 🌸
+                                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-rose-500 text-white text-[11px] font-black px-6 py-2 rounded-full shadow-xl flex items-center gap-2 animate-bounce border-2 border-white/50">
+                                        <Sparkles size={14}/> MỚI NHẤT
                                     </div>
                                 )}
-                                <div className="w-14 h-14 rounded-full bg-white/30 mb-4 flex items-center justify-center text-2xl">
-                                    {wish.isExpired ? '📜' : '💌'}
+                                
+                                {/* HEADER: THÔNG TIN GỬI/NHẬN */}
+                                <div className="w-full flex flex-col items-center mb-6">
+                                    <div className="w-16 h-16 rounded-full bg-white/20 mb-3 flex items-center justify-center text-3xl shadow-inner backdrop-blur-md">
+                                        {wish.isExpired ? '📜' : (isSpecificWish ? '💝' : '💌')}
+                                    </div>
+                                    
+                                    <div className="text-center">
+                                        <h3 className="text-3xl font-black tracking-tight drop-shadow-sm">
+                                            {wish.name}
+                                        </h3>
+                                        <div className="flex items-center justify-center gap-2 mt-2 opacity-90">
+                                            <Send size={14} className={isSpecificWish ? 'text-yellow-200' : 'text-white/70'} />
+                                            <span className="text-sm font-medium uppercase tracking-widest">
+                                                gửi đến {isSpecificWish ? '' : 'tất cả chị em phụ nữ'}
+                                            </span>
+                                        </div>
+                                        
+                                        {isSpecificWish && (
+                                            <div className="mt-2 bg-white/20 px-6 py-1.5 rounded-full border border-white/30 inline-block shadow-sm">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <span className="text-2xl font-black text-yellow-300 drop-shadow-md">
+                                                        {wish.recipient_name}
+                                                    </span>
+                                                    {/* HIỂN THỊ ICON MÓN QUÀ Ở ĐÂY */}
+                                                    {wish.gift_icon && (
+                                                        <span className="text-2xl animate-bounce drop-shadow-lg">
+                                                            {wish.gift_icon}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <h3 className="font-bold mb-2 tracking-tight text-xl">{wish.name}</h3>
-                                <p className="italic leading-relaxed text-lg">"{wish.message}"</p>
+
+                                {/* ĐƯỜNG KẺ CHIA CÁCH NGHỆ THUẬT */}
+                                <div className="w-24 h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent mx-auto mb-6"></div>
+
+                                {/* NỘI DUNG LỜI CHÚC */}
+                                <p className={`italic leading-relaxed font-serif text-center ${isSpecificWish ? 'text-2xl' : 'text-xl'}`}>
+                                    "{wish.message}"
+                                </p>
                             </motion.div>
                         )
                     })}
                 </AnimatePresence>
             </motion.div>
 
-            {/* Lớp cố định: Text & Navigation */}
+            {/* Tiêu đề 8/3 */}
             <div className="absolute top-10 w-full text-center text-white font-black text-4xl md:text-6xl drop-shadow-lg pointer-events-none z-30 px-4">
                 🌷 HAPPY WOMEN'S DAY 8/3 🌷
             </div>
