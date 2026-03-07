@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import Link from 'next/link'
-import { Volume2, VolumeX, Music, ChevronUp, Sparkles, Send } from 'lucide-react'
+import { Volume2, VolumeX, Music, ChevronUp, Sparkles, Send, X } from 'lucide-react'
 
 const DECORATIONS = ['🌸', '🌷', '💖', '✨']
 
@@ -15,14 +15,13 @@ const PLAYLIST = [
     { name: 'Monoooooo', url: '/audio/chamhoa.mp3' },
 ]
 
-// Cập nhật type Wish để thêm gift_icon
 type Wish = {
     id: string
     name: string
     message: string
     style_id: string
     recipient_name: string | null 
-    gift_icon: string | null // <-- THÊM DÒNG NÀY
+    gift_icon: string | null 
     startX: number
     isExpired: boolean
 }
@@ -30,15 +29,15 @@ type Wish = {
 export default function WallMode() {
     const [wishes, setWishes] = useState<Wish[]>([])
     const [decoItems, setDecoItems] = useState<any[]>([])
+    // State cho Pop-up chào mừng
+    const [showWelcome, setShowWelcome] = useState(true)
     
-    // Logic Nhạc
     const [isMuted, setIsMuted] = useState(false)
     const [currentSongIndex, setCurrentSongIndex] = useState(0)
     const [showPlaylist, setShowPlaylist] = useState(false)
     const audioRef = useRef<HTMLAudioElement | null>(null)
     const timeouts = useRef<Record<string, NodeJS.Timeout>>({})
 
-    // --- LOGIC PARALLAX ---
     const mouseX = useMotionValue(0)
     const mouseY = useMotionValue(0)
     const smoothX = useSpring(mouseX, { damping: 50, stiffness: 300 })
@@ -54,9 +53,6 @@ export default function WallMode() {
         mouseY.set(e.clientY)
     }
 
-    /* =========================
-       1. Music Logic
-    ========================== */
     useEffect(() => {
         const audio = new Audio(PLAYLIST[currentSongIndex].url)
         audio.loop = true
@@ -88,9 +84,6 @@ export default function WallMode() {
         }
     }
 
-    /* =========================
-       2. Realtime & Decorations
-    ========================== */
     useEffect(() => {
         const interval = setInterval(() => {
             const newItem = {
@@ -109,7 +102,7 @@ export default function WallMode() {
                 const raw = payload.new as any
                 const newWish: Wish = { 
                     ...raw, 
-                    gift_icon: raw.gift_icon, // <-- LẤY GIÁ TRỊ ICON TỪ DATABASE
+                    gift_icon: raw.gift_icon,
                     startX: Math.random() * 70 + 15, 
                     isExpired: false 
                 }
@@ -141,6 +134,51 @@ export default function WallMode() {
             style={{ perspective: '1200px' }} 
         >
             <motion.div style={{ x: bgMoveX, y: bgMoveY }} className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.4),_transparent_60%)] pointer-events-none" />
+
+            {/* POP-UP CHÀO MỪNG */}
+            <AnimatePresence>
+                {showWelcome && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            className="bg-white/90 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center relative border border-white"
+                        >
+                            <button 
+                                onClick={() => setShowWelcome(false)}
+                                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-pink-500 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                            
+                            <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Sparkles className="text-pink-500 animate-pulse" size={40} />
+                            </div>
+                            
+                            <h2 className="text-2xl font-black text-slate-800 mb-4 tracking-tight">Chào tất cả con dân của Vong ưu đảo và lãng khách tới chơi ✨</h2>
+                            
+                            <p className="text-slate-600 leading-relaxed mb-8">
+                                Lời đầu tiên mình cảm ơn mn đã dành thời gian ghé qua trang web 
+                                <span className="font-bold text-pink-500 italic"> Lỏ </span> 
+                                này của chúng tôi. Mong mn có một ngày thật là nhiều niềm vui sau khi xem lời chúc đến từ chúng tôi nhé! 🌸
+                            </p>
+                            
+                            <button 
+                                onClick={() => setShowWelcome(false)}
+                                className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-black rounded-2xl shadow-lg hover:shadow-pink-500/30 transition-all active:scale-95"
+                            >
+                                OKIIIII LUÔN ❤️
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Music Controls */}
             <div className="fixed bottom-6 right-6 z-[110] flex flex-col items-end gap-2">
@@ -201,45 +239,35 @@ export default function WallMode() {
                                     </div>
                                 )}
                                 
-                                {/* HEADER: THÔNG TIN GỬI/NHẬN */}
-                                <div className="w-full flex flex-col items-center mb-6">
-                                    <div className="w-16 h-16 rounded-full bg-white/20 mb-3 flex items-center justify-center text-3xl shadow-inner backdrop-blur-md">
-                                        {wish.isExpired ? '📜' : (isSpecificWish ? '💝' : '💌')}
+                                <div className="w-16 h-16 rounded-full bg-white/20 mb-3 flex items-center justify-center text-3xl shadow-inner backdrop-blur-md">
+                                    {wish.isExpired ? '📜' : (isSpecificWish ? '💝' : '💌')}
+                                </div>
+                                
+                                <div className="text-center">
+                                    <h3 className="text-3xl font-black tracking-tight drop-shadow-sm uppercase">
+                                        {wish.name}
+                                    </h3>
+                                    <div className="flex items-center justify-center gap-2 mt-2 opacity-90">
+                                        <Send size={14} className={isSpecificWish ? 'text-yellow-200' : 'text-white/70'} />
+                                        <span className="text-sm font-medium uppercase tracking-widest italic">
+                                            gửi lời chúc tới
+                                        </span>
                                     </div>
                                     
-                                    <div className="text-center">
-                                        <h3 className="text-3xl font-black tracking-tight drop-shadow-sm">
-                                            {wish.name}
-                                        </h3>
-                                        <div className="flex items-center justify-center gap-2 mt-2 opacity-90">
-                                            <Send size={14} className={isSpecificWish ? 'text-yellow-200' : 'text-white/70'} />
-                                            <span className="text-sm font-medium uppercase tracking-widest">
-                                                gửi đến {isSpecificWish ? '' : 'tất cả chị em phụ nữ'}
+                                    <div className="mt-2 bg-white/20 px-6 py-2 rounded-full border border-white/30 inline-flex items-center gap-3 shadow-lg">
+                                        <span className="text-2xl font-black text-white drop-shadow-md">
+                                            {isSpecificWish ? wish.recipient_name : 'Tất cả chị em phụ nữ 🌸'}
+                                        </span>
+                                        {isSpecificWish && wish.gift_icon && (
+                                            <span className="text-3xl animate-bounce drop-shadow-md">
+                                                {wish.gift_icon}
                                             </span>
-                                        </div>
-                                        
-                                        {isSpecificWish && (
-                                            <div className="mt-2 bg-white/20 px-6 py-1.5 rounded-full border border-white/30 inline-block shadow-sm">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <span className="text-2xl font-black text-yellow-300 drop-shadow-md">
-                                                        {wish.recipient_name}
-                                                    </span>
-                                                    {/* HIỂN THỊ ICON MÓN QUÀ Ở ĐÂY */}
-                                                    {wish.gift_icon && (
-                                                        <span className="text-2xl animate-bounce drop-shadow-lg">
-                                                            {wish.gift_icon}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* ĐƯỜNG KẺ CHIA CÁCH NGHỆ THUẬT */}
-                                <div className="w-24 h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent mx-auto mb-6"></div>
+                                <div className="w-24 h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent mx-auto mb-6 mt-4"></div>
 
-                                {/* NỘI DUNG LỜI CHÚC */}
                                 <p className={`italic leading-relaxed font-serif text-center ${isSpecificWish ? 'text-2xl' : 'text-xl'}`}>
                                     "{wish.message}"
                                 </p>

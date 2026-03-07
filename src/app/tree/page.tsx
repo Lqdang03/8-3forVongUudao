@@ -138,7 +138,7 @@ export default function FlowerMode() {
             >
                 <Link href="/last" className="group relative flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-2.5 rounded-full shadow-[0_0_20px_rgba(219,39,119,0.4)] hover:shadow-[0_0_30px_rgba(219,39,119,0.6)] transition-all font-bold">
                     <Sparkles size={18} className="animate-pulse" />
-                    <span>Trang cuối</span>
+                    <span>Lời cuối</span>
                     <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
                     
                     {/* Hiệu ứng viền sáng chạy quanh nút */}
