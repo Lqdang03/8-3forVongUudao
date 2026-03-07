@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { Sparkles, Volume2, VolumeX, ArrowRight } from 'lucide-react'
 
 const THEMES = [
     { id: '#ec4899', name: 'Hồng Kẹo' },
@@ -103,7 +103,6 @@ export default function FlowerMode() {
     useEffect(() => {
         setMounted(true)
         const fetchWishes = async () => {
-            // Nhớ select cả trường gift_icon mới thêm
             const { data } = await supabase.from('wishes').select('*').order('created_at', { ascending: false })
             if (data) {
                 const result: Record<string, any[]> = {}
@@ -125,10 +124,29 @@ export default function FlowerMode() {
 
     return (
         <div className="fixed inset-0 bg-gradient-to-br from-rose-100 via-pink-100 to-teal-50 flex items-center justify-center overflow-hidden">
-            <Link href="/wall" className="absolute top-6 left-6 z-50 text-pink-600 bg-white/80 border border-pink-200 px-5 py-2 rounded-full shadow-lg hover:bg-white transition-all flex items-center gap-2">
+            
+            {/* Nút quay lại Wall */}
+            <Link href="/wall" className="absolute top-6 left-6 z-50 text-pink-600 bg-white/80 border border-pink-200 px-5 py-2 rounded-full shadow-lg hover:bg-white transition-all flex items-center gap-2 font-bold">
                 <span>←</span> Wall
             </Link>
 
+            {/* NÚT NHẢY SANG TRANG MỚI (LAST PAGE) */}
+            <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="absolute top-6 right-6 z-50"
+            >
+                <Link href="/last" className="group relative flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-2.5 rounded-full shadow-[0_0_20px_rgba(219,39,119,0.4)] hover:shadow-[0_0_30px_rgba(219,39,119,0.6)] transition-all font-bold">
+                    <Sparkles size={18} className="animate-pulse" />
+                    <span>Trang cuối</span>
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                    
+                    {/* Hiệu ứng viền sáng chạy quanh nút */}
+                    <span className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping pointer-events-none"></span>
+                </Link>
+            </motion.div>
+
+            {/* --- GIAO DIỆN MÁY TÍNH --- */}
             <div className="hidden md:grid w-full max-w-6xl h-[80vh] grid-cols-3 grid-rows-3 place-items-center z-10">
                 {THEMES.map((theme, idx) => {
                     const gridPos = ["col-start-1 row-start-1", "col-start-3 row-start-1", "col-start-2 row-start-2", "col-start-1 row-start-3", "col-start-3 row-start-3"][idx];
@@ -136,9 +154,10 @@ export default function FlowerMode() {
                 })}
             </div>
 
+            {/* --- GIAO DIỆN ĐIỆN THOẠI --- */}
             <div className="md:hidden w-full h-full pt-24 pb-10 overflow-y-auto px-6 z-10 flex flex-col gap-10">
                 <div className="text-center">
-                    <h1 className="text-2xl font-black text-pink-600 italic">Garden of Wishes</h1>
+                    <h1 className="text-2xl font-black text-pink-600 italic tracking-widest">Garden of Wishes</h1>
                 </div>
                 {THEMES.map((theme) => (
                     <div key={`mb-${theme.id}`}>
@@ -148,7 +167,7 @@ export default function FlowerMode() {
                 ))}
             </div>
 
-            {/* MODAL LỜI CHÚC (TREE MODE) */}
+            {/* MODAL LỜI CHÚC */}
             <AnimatePresence>
                 {selectedFlower && (
                     <motion.div
@@ -171,25 +190,21 @@ export default function FlowerMode() {
 
                             <div className="text-6xl mt-12 mb-4">{getFlower(selectedFlower.style_id)}</div>
 
-                            {/* DẢI BĂNG THÔNG TIN NGƯỜI NHẬN & QUÀ TẶNG */}
                             {selectedFlower.recipient_name && selectedFlower.recipient_name.trim() !== '' && (
                                 <div className="w-full bg-gradient-to-r from-transparent via-pink-50 to-transparent py-4 mb-4 border-y border-pink-100/50">
                                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-pink-400/80 mb-1">Gửi trọn yêu thương đến</p>
                                     <div className="flex justify-center items-center gap-3">
                                         <Sparkles size={24} className="text-pink-400 animate-pulse" />
-                                        
                                         <div className="flex items-center gap-2">
                                             <span className="text-3xl md:text-4xl font-black text-pink-600 drop-shadow-sm">
                                                 {selectedFlower.recipient_name}
                                             </span>
-                                            {/* HIỂN THỊ ICON MÓN QUÀ (NẾU CÓ) */}
                                             {selectedFlower.gift_icon && (
                                                 <span className="text-4xl animate-bounce drop-shadow-md">
                                                     {selectedFlower.gift_icon}
                                                 </span>
                                             )}
                                         </div>
-
                                         <Sparkles size={24} className="text-pink-400 animate-pulse" />
                                     </div>
                                 </div>
@@ -238,14 +253,6 @@ function FlowerZone({ flowers = [], color, getFlower, onSelect, className }: any
                                     <span className="relative inline-flex rounded-full h-4 w-4 bg-yellow-500 border-2 border-white shadow-sm"></span>
                                 </span>
                             )}
-                            
-                            {/* Hiển thị đè icon quà tặng lên góc bông hoa nếu muốn phá cách (Tùy chọn) */}
-                            {/* {isSpecial && flower.gift_icon && (
-                                <span className="absolute -bottom-2 -right-2 text-xl drop-shadow-lg z-20">
-                                    {flower.gift_icon}
-                                </span>
-                            )} */}
-
                             <div className={isSpecial ? "animate-[bounce_3s_infinite]" : ""}>
                                 {getFlower(color)}
                             </div>

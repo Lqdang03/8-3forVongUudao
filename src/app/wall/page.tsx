@@ -12,6 +12,7 @@ const PLAYLIST = [
     { name: 'Moonlight Piano', url: '/audio/moonlight.mp3' },
     { name: 'Chill Lofi', url: '/audio/her.mp3' },
     { name: 'Romantic Garden', url: '/audio/rock.mp3' },
+    { name: 'Monoooooo', url: '/audio/chamhoa.mp3' },
 ]
 
 // Cập nhật type Wish để thêm gift_icon
