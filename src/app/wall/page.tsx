@@ -23,6 +23,7 @@ type Wish = {
     gift_icon: string | null
     startX: number
     isExpired: boolean
+    spawnTime: number
 }
 
 export default function WallMode() {
@@ -88,44 +89,49 @@ export default function WallMode() {
     }
 
     // getSafeX: compute a safe startX (vw) that avoids collisions with existing visible cards
-    const getSafeX = (existing: Wish[], cardMinPx = CARD_MIN_PX) => {
-        // if window not available (shouldn't happen in 'use client'), fallback
-        if (typeof window === 'undefined') {
-            return Math.random() * (78 - 8) + 8
+   const getSafeX = (existing: Wish[]) => {
+        if (typeof window === 'undefined') return 10;
+
+        const isMobile = window.innerWidth < 768;
+
+        // 1. MOBILE: Ép bay ở giữa màn hình (từ 2vw đến 6vw)
+        if (isMobile) {
+            return Math.random() * 4 + 2; 
         }
 
-        // convert px -> vw
-        const pxToVw = (px: number) => (px / window.innerWidth) * 100
-        const cardWidthVW = pxToVw(cardMinPx)
-        const BUFFER_VW = 6 // tweak: extra safe buffer beyond card width
-        const MIN_DISTANCE_VW = Math.max(8, cardWidthVW + BUFFER_VW)
+        // 2. PC: Phân 3 làn đường bay (10vw, 40vw, 70vw)
+        const lanes = [10, 40, 70]; 
+        
+        // Tìm các thiệp VỪA XUẤT HIỆN trong 8 giây (đang ở dưới thấp, dễ bị đè)
+        const recentlySpawned = existing.filter(w => !w.isExpired && (Date.now() - w.spawnTime) < 8000);
 
-        const isMobile = window.innerWidth < 768
-        const SAFE_START = isMobile ? 2 : 8
-        const SAFE_END = isMobile ? 10 : 78
-        let tries = 0
-        const MAX_TRIES = 50
+        // Đánh dấu các làn đang bị chiếm bởi các thiệp thấp này
+        const occupiedLanes = recentlySpawned.map(w => {
+            return lanes.reduce((prev, curr) => Math.abs(curr - w.startX) < Math.abs(prev - w.startX) ? curr : prev);
+        });
 
-        while (tries < MAX_TRIES) {
-            const x = Math.random() * (SAFE_END - SAFE_START) + SAFE_START
-            const collide = existing.some(w => !w.isExpired && Math.abs(w.startX - x) < MIN_DISTANCE_VW)
-            if (!collide) return x
-            tries++
+        // Tìm các làn còn trống
+        const freeLanes = lanes.filter(lane => !occupiedLanes.includes(lane));
+
+        // Nếu có làn trống -> Chọn ngẫu nhiên 1 làn trống và hơi xê dịch nhẹ cho tự nhiên
+        if (freeLanes.length > 0) {
+            const chosenLane = freeLanes[Math.floor(Math.random() * freeLanes.length)];
+            return chosenLane + (Math.random() * 6 - 3);
         }
 
-        // fallback if can't find non-colliding spot
-        return Math.random() * (SAFE_END - SAFE_START) + SAFE_START
+        // Nếu vô tình cả 3 làn đều đầy (rất hiếm khi xảy ra), random 1 làn bất kỳ
+        return lanes[Math.floor(Math.random() * lanes.length)] + (Math.random() * 6 - 3);
     }
 
     const createFlyingWish = (rawWish: any, existing: Wish[]) => {
         return {
             ...rawWish,
             id: `${rawWish.id ?? 'w'}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            spawnTime: Date.now(), // <--- THÊM DÒNG NÀY ĐỂ TÍNH GIỜ BAY
             startX: getSafeX(existing),
             isExpired: false,
         } as Wish
     }
-
     /* =========================
        1. Audio setup & fetch initial wishes
        - audio recreated when currentSongIndex or isMuted changes
