@@ -40,9 +40,17 @@ export default function WallMode() {
 
     // Ref để tuần tự dùng pool (chống trùng nội dung)
     const poolIndexRef = useRef(0)
-
-    // Tunable params
-    const MAX_VISIBLE = 6               // số card hiển thị tối đa cùng lúc (tune)
+    const maxVisibleRef = useRef(6)
+    useEffect(() => {
+        const handleResize = () => {
+            // Dưới 768px (Mobile) -> 1 card, ngược lại (PC) -> 6 card
+            maxVisibleRef.current = window.innerWidth < 768 ? 1 : 6
+        }
+        handleResize() // Gọi lần đầu khi mount
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
+    // Tunable params              // số card hiển thị tối đa cùng lúc (tune)
     const CARD_MIN_PX = 320             // ước lượng width tối thiểu card để tính khoảng cách
     const CARD_LIFETIME_MS = 20000      // thời gian bay trước khi expired
     const SPAWN_INTERVAL_MS = 4500      // interval spawn replay
@@ -63,13 +71,18 @@ export default function WallMode() {
         mouseX.set(e.clientX)
         mouseY.set(e.clientY)
     }
-
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (e.touches.length > 0) {
+            mouseX.set(e.touches[0].clientX)
+            mouseY.set(e.touches[0].clientY)
+        }
+    }
     // utility: shuffle array (immutable)
     const shuffleArray = (array: any[]) => {
         const newArr = [...array]
         for (let i = newArr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1))
-            ;[newArr[i], newArr[j]] = [newArr[j], newArr[i]]
+                ;[newArr[i], newArr[j]] = [newArr[j], newArr[i]]
         }
         return newArr
     }
@@ -87,8 +100,9 @@ export default function WallMode() {
         const BUFFER_VW = 6 // tweak: extra safe buffer beyond card width
         const MIN_DISTANCE_VW = Math.max(8, cardWidthVW + BUFFER_VW)
 
-        const SAFE_START = 8
-        const SAFE_END = 78
+        const isMobile = window.innerWidth < 768
+        const SAFE_START = isMobile ? 2 : 8
+        const SAFE_END = isMobile ? 10 : 78
         let tries = 0
         const MAX_TRIES = 50
 
@@ -181,23 +195,27 @@ export default function WallMode() {
         const spawnInterval = setInterval(() => {
             if (allWishesPool.length === 0) return
 
-            const wishData = allWishesPool[poolIndexRef.current]
-
             setWishes(prev => {
-                // create based on the latest prev so getSafeX sees current positions
+                // Kiểm tra xem hiện tại đang có bao nhiêu card CHƯA expired
+                const activeWishes = prev.filter(w => !w.isExpired)
+
+                // Nếu số card đang bay đã đạt giới hạn (1 cho mobile, 6 cho PC) thì khoan thả thêm
+                if (activeWishes.length >= maxVisibleRef.current) {
+                    return prev
+                }
+
+                const wishData = allWishesPool[poolIndexRef.current]
                 const flying = createFlyingWish(wishData, prev)
 
-                // push and keep only last MAX_VISIBLE
-                const updated = [...prev, flying].slice(-MAX_VISIBLE)
+                // Tăng slice lên 15 làm bộ đệm để card cũ chạy xong animation biến mất
+                const updated = [...prev, flying].slice(-15)
 
-                // set single timeout to mark expired
                 const t = window.setTimeout(() => {
                     setWishes(p => p.map(w => (w.id === flying.id ? { ...w, isExpired: true } : w)))
                     delete timeouts.current[flying.id]
                 }, CARD_LIFETIME_MS)
 
                 timeouts.current[flying.id] = t
-
                 return updated
             })
 
@@ -215,7 +233,7 @@ export default function WallMode() {
                 // create a flying wish using prev snapshot
                 setWishes(prev => {
                     const newWish = createFlyingWish(raw, prev)
-                    const updated = [...prev, newWish].slice(-MAX_VISIBLE)
+                    const updated = [...prev, newWish].slice(-15)
                     // single timeout
                     const t = window.setTimeout(() => {
                         setWishes(p => p.map(w => (w.id === newWish.id ? { ...w, isExpired: true } : w)))
@@ -276,6 +294,7 @@ export default function WallMode() {
     return (
         <div
             onMouseMove={handleMouseMove}
+            onTouchMove={handleTouchMove}
             className="h-screen w-full overflow-hidden relative bg-gradient-to-br from-rose-200 via-pink-300 to-fuchsia-400 font-sans"
             style={{ perspective: '1200px' }}
         >
@@ -326,47 +345,54 @@ export default function WallMode() {
 
             {/* WISHES LAYER */}
             <motion.div style={{ x: useTransform(smoothX, [0, 2000], [10, -10]), y: useTransform(smoothY, [0, 1000], [10, -10]) }} className="relative w-full h-full z-20">
-                <AnimatePresence>
-                    {wishes.map((wish, index) => {
-                        const isSpecific = wish.recipient_name && wish.recipient_name.trim() !== ''
-                        return (
-                            <motion.div
-                                key={wish.id}
-                                custom={wish}
-                                variants={variants}
-                                initial="initial"
-                                animate={wish.isExpired ? 'expired' : 'active'}
-                                transition={{
-                                    y: { duration: 25, ease: 'linear' },
-                                    scale: { type: 'spring', stiffness: 40, damping: 20 },
-                                    opacity: { duration: 1.5 }
-                                }}
-                                style={{
-                                    backgroundColor: `${wish.style_id}${wish.isExpired ? '44' : 'dd'}`,
-                                    zIndex: wish.isExpired ? 1 : index + 10,
-                                    position: 'absolute'
-                                }}
-                                className={`px-6 py-8 rounded-[2.5rem] shadow-2xl text-white min-w-[280px] max-w-[420px] backdrop-blur-xl flex flex-col border border-white/40 ${isSpecific && !wish.isExpired ? 'ring-4 ring-white/30 shadow-[0_0_50px_rgba(255,255,255,0.2)]' : ''}`}
-                            >
-                                <div className="w-full flex flex-col items-center mb-4">
-                                    <div className="w-14 h-14 rounded-full bg-white/20 mb-3 flex items-center justify-center text-3xl shadow-inner">
-                                        {isSpecific ? '💝' : '💌'}
-                                    </div>
-                                    <div className="text-center">
-                                        <h3 className="text-2xl font-black drop-shadow-sm uppercase leading-tight tracking-tight">{wish.name}</h3>
-                                        <div className="flex items-center justify-center gap-2 mt-1 opacity-80 text-[10px] font-bold uppercase tracking-widest italic"><Send size={10} /> gửi tới</div>
-                                        <div className="mt-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/20 inline-flex items-center gap-2">
-                                            <span className="text-lg font-black text-white">{isSpecific ? wish.recipient_name : 'Tất cả mọi người 🌸'}</span>
-                                            {isSpecific && wish.gift_icon && <span className="text-xl animate-bounce drop-shadow-md">{wish.gift_icon}</span>}
+                <motion.div
+                    drag="x"
+                    dragConstraints={{ left: -300, right: 300 }} // Giới hạn kéo qua lại 300px
+                    dragElastic={0.2}
+                    className="w-full h-full absolute inset-0"
+                >
+                    <AnimatePresence>
+                        {wishes.map((wish, index) => {
+                            const isSpecific = wish.recipient_name && wish.recipient_name.trim() !== ''
+                            return (
+                                <motion.div
+                                    key={wish.id}
+                                    custom={wish}
+                                    variants={variants}
+                                    initial="initial"
+                                    animate={wish.isExpired ? 'expired' : 'active'}
+                                    transition={{
+                                        y: { duration: 25, ease: 'linear' },
+                                        scale: { type: 'spring', stiffness: 40, damping: 20 },
+                                        opacity: { duration: 1.5 }
+                                    }}
+                                    style={{
+                                        backgroundColor: `${wish.style_id}${wish.isExpired ? '44' : 'dd'}`,
+                                        zIndex: wish.isExpired ? 1 : index + 10,
+                                        position: 'absolute'
+                                    }}
+                                    className={`px-6 py-8 rounded-[2.5rem] shadow-2xl text-white min-w-[280px] max-w-[420px] backdrop-blur-xl flex flex-col border border-white/40 ${isSpecific && !wish.isExpired ? 'ring-4 ring-white/30 shadow-[0_0_50px_rgba(255,255,255,0.2)]' : ''}`}
+                                >
+                                    <div className="w-full flex flex-col items-center mb-4">
+                                        <div className="w-14 h-14 rounded-full bg-white/20 mb-3 flex items-center justify-center text-3xl shadow-inner">
+                                            {isSpecific ? '💝' : '💌'}
+                                        </div>
+                                        <div className="text-center">
+                                            <h3 className="text-2xl font-black drop-shadow-sm uppercase leading-tight tracking-tight">{wish.name}</h3>
+                                            <div className="flex items-center justify-center gap-2 mt-1 opacity-80 text-[10px] font-bold uppercase tracking-widest italic"><Send size={10} /> gửi tới</div>
+                                            <div className="mt-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/20 inline-flex items-center gap-2">
+                                                <span className="text-lg font-black text-white">{isSpecific ? wish.recipient_name : 'Tất cả mọi người 🌸'}</span>
+                                                {isSpecific && wish.gift_icon && <span className="text-xl animate-bounce drop-shadow-md">{wish.gift_icon}</span>}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="w-16 h-0.5 bg-white/30 mx-auto mb-4 rounded-full"></div>
-                                <p className="italic leading-snug font-serif text-center text-lg drop-shadow-sm px-2">"{wish.message}"</p>
-                            </motion.div>
-                        )
-                    })}
-                </AnimatePresence>
+                                    <div className="w-16 h-0.5 bg-white/30 mx-auto mb-4 rounded-full"></div>
+                                    <p className="italic leading-snug font-serif text-center text-lg drop-shadow-sm px-2">"{wish.message}"</p>
+                                </motion.div>
+                            )
+                        })}
+                    </AnimatePresence>
+                </motion.div>
             </motion.div>
 
             {/* TITLE & NAVIGATION */}
